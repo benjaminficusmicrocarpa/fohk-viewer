@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FoHK Viewer — Flora of Hong Kong text</title>
+  <meta name="description" content="Fast, offline searchable viewer for Flora of Hong Kong family, genus and species text extracted from the Hong Kong Herbarium workbooks.">
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">&#127807;</span>
+      <div>
+        <h1>FoHK Viewer</h1>
+        <p>Flora of Hong Kong text &middot; local &amp; instant</p>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <span id="build-stamp" class="stamp"></span>
+      <button id="random-btn" class="btn" type="button" title="Jump to a random treatment">Random</button>
+      <button id="theme-btn" class="btn" type="button" title="Toggle light / dark theme" aria-label="Toggle theme">&#9788;</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="sidebar" aria-label="Search and results">
+      <div class="controls">
+        <label class="search-wrap" for="search">
+          <span class="search-icon" aria-hidden="true">&#128269;</span>
+          <input id="search" type="search" autocomplete="off" spellcheck="false"
+                 placeholder="Name, 中文名, family, genus, id&hellip;" aria-label="Search treatments">
+          <kbd>/</kbd>
+        </label>
+
+        <div class="filter-row">
+          <div id="rank-filters" class="segmented" role="group" aria-label="Rank filter">
+            <button type="button" class="seg is-active" data-rank="all">All</button>
+            <button type="button" class="seg" data-rank="family">Family</button>
+            <button type="button" class="seg" data-rank="genus">Genus</button>
+            <button type="button" class="seg" data-rank="species">Species</button>
+          </div>
+        </div>
+
+        <div class="filter-row small">
+          <label class="check"><input id="text-only" type="checkbox" checked> Has text only</label>
+          <span id="result-count" class="count" aria-live="polite">Loading&hellip;</span>
+        </div>
+      </div>
+
+      <div id="results" class="results" role="listbox" aria-label="Search results"></div>
+      <div id="list-note" class="list-note" hidden></div>
+    </section>
+
+    <section class="content" aria-label="Treatment text">
+      <div id="loading" class="state-panel">
+        <div class="spinner" aria-hidden="true"></div>
+        <p>Loading FoHK data&hellip;</p>
+      </div>
+      <article id="detail" class="detail" hidden></article>
+    </section>
+  </main>
+
+  <script src="assets/app.js" defer></script>
+</body>
+</html>
