@@ -3,10 +3,13 @@
   'use strict';
 
   var MAX_RESULTS = 300;
+  var CHIP_LIMIT = 120;
   var state = {
     records: [], byKey: new Map(), familyByName: new Map(), genusByName: new Map(),
+    familyGenera: new Map(), familySpecies: new Map(), genusSpecies: new Map(),
+    binomialSpecies: new Map(), speciesByBinomial: new Map(),
     filtered: [], rank: 'all', query: '', textOnly: true,
-    active: -1, selectedKey: null, tokens: []
+    active: -1, selectedKey: null, tokens: [], quickNavOpen: true
   };
 
   var $ = function (id) { return document.getElementById(id); };
@@ -16,6 +19,7 @@
   var noteEl = $('list-note');
   var detailEl = $('detail');
   var loadingEl = $('loading');
+  var contentEl = document.querySelector('.content');
 
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
@@ -47,7 +51,8 @@
 
   function prepare(payload) {
     state.records = payload.records || [];
-    state.byKey.clear(); state.familyByName.clear(); state.genusByName.clear();
+    ['byKey', 'familyByName', 'genusByName', 'familyGenera', 'familySpecies',
+     'genusSpecies', 'binomialSpecies', 'speciesByBinomial'].forEach(function (k) { state[k].clear(); });
     state.records.forEach(function (r) {
       r.key = r.rank + '-' + r.id;
       r._sci = norm(r.sci); r._chi = norm(r.chi); r._sc = norm(r.sc);
@@ -55,6 +60,26 @@
       state.byKey.set(r.key, r);
       if (r.rank === 'family' && r.sci) state.familyByName.set(norm(r.sci), r.key);
       if (r.rank === 'genus' && r.sci) state.genusByName.set(norm(r.sci), r.key);
+      if (r.rank === 'species') {
+        var parts = r.sci.split(/\s+/);
+        r._binomial = parts.slice(0, 2).join(' ');
+        r._isInfra = parts.length > 2;
+      }
+    });
+    function add(map, key, value) {
+      if (!key) return;
+      var k = norm(key), a = map.get(k);
+      if (!a) { a = []; map.set(k, a); }
+      a.push(value);
+    }
+    state.records.forEach(function (r) {
+      if (r.rank === 'genus') add(state.familyGenera, r.family, r);
+      if (r.rank === 'species') {
+        add(state.familySpecies, r.family, r);
+        add(state.genusSpecies, r.genus, r);
+        add(state.binomialSpecies, r._binomial, r);
+        if (!r._isInfra) state.speciesByBinomial.set(norm(r._binomial), r);
+      }
     });
     if (payload.meta && payload.meta.generated) {
       $('build-stamp').textContent = 'Data: ' + payload.meta.generated;
@@ -82,6 +107,98 @@
       return [r.family, '#' + r.id].filter(Boolean).join(' · ');
     }
     return [r.family, r.genus, '#' + r.id].filter(Boolean).join(' · ');
+  }
+
+  function chipButton(item) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'taxon-chip';
+    if (item.key) b.dataset.key = item.key;
+    if (item.search) b.dataset.search = item.search;
+    b.title = item.label;
+    var i = document.createElement('i');
+    i.textContent = item.label;
+    b.appendChild(i);
+    return b;
+  }
+
+  function toItems(list, currentKey, nonInfraOnly) {
+    return (list || []).filter(function (x) {
+      return x.key !== currentKey && !(nonInfraOnly && x._isInfra);
+    }).map(function (x) { return { label: x.sci, key: x.key }; });
+  }
+
+  function quickRow(body, label, items) {
+    if (!items.length) return;
+    var row = document.createElement('div');
+    row.className = 'qn-row';
+    var lab = document.createElement('span');
+    lab.className = 'qn-label';
+    lab.textContent = label + ' (' + items.length + ')';
+    row.appendChild(lab);
+    var chips = document.createElement('div');
+    chips.className = 'chips';
+    items.slice(0, CHIP_LIMIT).forEach(function (item) { chips.appendChild(chipButton(item)); });
+    if (items.length > CHIP_LIMIT) {
+      var more = document.createElement('span');
+      more.className = 'qn-more';
+      more.textContent = '+' + (items.length - CHIP_LIMIT) + ' more — search this name';
+      chips.appendChild(more);
+    }
+    row.appendChild(chips);
+    body.appendChild(row);
+  }
+
+  function renderQuickNav(r) {
+    var up = [];
+    if (r.rank !== 'family' && r.family) {
+      var fk = state.familyByName.get(norm(r.family));
+      if (fk) up.push({ label: r.family, key: fk });
+    }
+    if (r.rank === 'species' && r.genus) {
+      var gk = state.genusByName.get(norm(r.genus));
+      if (gk) up.push({ label: r.genus, key: gk });
+    }
+    if (r.rank === 'species' && r._isInfra) {
+      var parent = state.speciesByBinomial.get(norm(r._binomial));
+      if (parent && parent.key !== r.key) up.push({ label: r._binomial, key: parent.key });
+      else up.push({ label: r._binomial, search: r._binomial });
+    }
+
+    var rows = [];
+    if (r.rank === 'family') {
+      rows.push(['Genera in ' + r.sci, toItems(state.familyGenera.get(norm(r.sci)), r.key)]);
+      rows.push(['Species in ' + r.sci, toItems(state.familySpecies.get(norm(r.sci)), r.key)]);
+    } else if (r.rank === 'genus') {
+      rows.push(['Species in ' + r.sci, toItems(state.genusSpecies.get(norm(r.sci)), r.key)]);
+    } else if (r.rank === 'species') {
+      rows.push(['Other species in ' + r.genus, toItems(state.genusSpecies.get(norm(r.genus)), r.key, true)]);
+      var infra = toItems(state.binomialSpecies.get(norm(r._binomial)), r.key);
+      if (infra.length) rows.push(['Infraspecific taxa of ' + r._binomial, infra]);
+    }
+    if (!up.length && !rows.some(function (x) { return x[1].length; })) return null;
+
+    var sec = document.createElement('section');
+    sec.className = 'quicknav';
+    var head = document.createElement('div');
+    head.className = 'qn-head';
+    var title = document.createElement('span');
+    title.textContent = 'Quick switch';
+    var toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'qn-toggle';
+    toggle.textContent = state.quickNavOpen ? 'Hide' : 'Show';
+    head.appendChild(title);
+    head.appendChild(toggle);
+    sec.appendChild(head);
+
+    var body = document.createElement('div');
+    body.className = 'qn-body';
+    body.hidden = !state.quickNavOpen;
+    if (up.length) quickRow(body, 'Up', up);
+    rows.forEach(function (x) { quickRow(body, x[0], x[1]); });
+    sec.appendChild(body);
+    return sec;
   }
 
   function runSearch() {
@@ -265,6 +382,9 @@
     head.appendChild(meta);
     detailEl.appendChild(head);
 
+    var quick = renderQuickNav(r);
+    if (quick) detailEl.appendChild(quick);
+
     var actions = document.createElement('div');
     actions.className = 'detail-actions';
 
@@ -295,6 +415,7 @@
     state.selectedKey = r.key;
     state.active = state.filtered.findIndex(function (x) { return x.key === r.key; });
     renderDetail(r);
+    contentEl.scrollTop = 0;
     Array.prototype.forEach.call(resultsEl.querySelectorAll('.res'), function (el) {
       var on = el.dataset.key === r.key;
       el.classList.toggle('is-active', on);
@@ -330,6 +451,22 @@
     return false;
   }
 
+  function jumpTo(key) {
+    var r = state.byKey.get(key);
+    if (!r) return;
+    if (state.rank !== 'all' && state.rank !== r.rank) {
+      state.rank = 'all';
+      Array.prototype.forEach.call(document.querySelectorAll('#rank-filters .seg'), function (b) {
+        b.classList.toggle('is-active', b.dataset.rank === 'all');
+      });
+    }
+    if (state.textOnly && !(r.text && r.text.trim())) {
+      $('text-only').checked = false; state.textOnly = false;
+    }
+    runSearch();
+    selectRecord(r, true);
+  }
+
   function setTheme(theme) {
     document.documentElement.dataset.theme = theme;
     try { localStorage.setItem('fohk-theme', theme); } catch (e) { /* ignore */ }
@@ -360,20 +497,26 @@
     });
 
     detailEl.addEventListener('click', function (e) {
+      var toggle = e.target.closest('.qn-toggle');
+      if (toggle) {
+        state.quickNavOpen = !state.quickNavOpen;
+        toggle.textContent = state.quickNavOpen ? 'Hide' : 'Show';
+        var sec = toggle.closest('.quicknav');
+        sec.classList.toggle('is-collapsed', !state.quickNavOpen);
+        sec.querySelector('.qn-body').hidden = !state.quickNavOpen;
+        return;
+      }
       var cr = e.target.closest('.crumb');
-      if (cr) {
-        var r = state.byKey.get(cr.dataset.key);
-        if (r) {
-          if (state.rank !== 'all' && state.rank !== r.rank) {
-            state.rank = 'all';
-            Array.prototype.forEach.call(document.querySelectorAll('#rank-filters .seg'), function (b) {
-              b.classList.toggle('is-active', b.dataset.rank === 'all');
-            });
-          }
-          if (state.textOnly && !(r.text && r.text.trim())) {
-            $('text-only').checked = false; state.textOnly = false;
-          }
-          runSearch(); selectRecord(r, true);
+      if (cr) { jumpTo(cr.dataset.key); return; }
+      var chip = e.target.closest('.taxon-chip');
+      if (chip) {
+        if (chip.dataset.key) {
+          jumpTo(chip.dataset.key);
+        } else if (chip.dataset.search) {
+          searchEl.value = chip.dataset.search;
+          runSearch();
+          if (state.filtered.length) selectRecord(state.filtered[0], true);
+          searchEl.focus();
         }
         return;
       }

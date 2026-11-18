@@ -224,6 +224,52 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 1
 
 .detail-actions { display: flex; gap: 8px; margin-top: 16px; }
 
+/* ---------- quick taxon switcher ---------- */
+
+.quicknav {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin: 0 0 20px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.qn-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 9px 14px;
+  background: var(--panel-2);
+  border-bottom: 1px solid var(--border);
+  font-size: 12px; font-weight: 600; color: var(--muted);
+  letter-spacing: .02em;
+}
+.quicknav.is-collapsed .qn-head { border-bottom: 0; }
+.qn-toggle {
+  border: 0; background: transparent; color: var(--accent-text);
+  cursor: pointer; font-size: 12px; padding: 2px 4px;
+}
+.qn-toggle:hover { text-decoration: underline; }
+.qn-body { padding: 6px 14px 10px; }
+.qn-row { display: flex; gap: 10px; align-items: flex-start; padding: 7px 0; }
+.qn-row + .qn-row { border-top: 1px dashed var(--border); }
+.qn-label {
+  flex: 0 0 168px; padding-top: 3px;
+  font-size: 11px; color: var(--muted); line-height: 1.5;
+}
+.chips {
+  flex: 1; min-width: 0;
+  display: flex; flex-wrap: wrap; gap: 5px;
+  max-height: 92px; overflow-y: auto; overscroll-behavior: contain;
+}
+.taxon-chip {
+  border: 1px solid var(--border);
+  background: var(--bg); color: var(--accent-text);
+  border-radius: 99px; padding: 3px 9px;
+  font-size: 12px; cursor: pointer; white-space: nowrap;
+  max-width: 260px; overflow: hidden; text-overflow: ellipsis;
+}
+.taxon-chip:hover { background: var(--accent-soft); border-color: var(--accent); }
+.qn-more { font-size: 11px; color: var(--muted); align-self: center; padding: 3px 2px; }
+
 .empty-note {
   background: var(--panel); border: 1px dashed var(--border);
   border-radius: var(--radius); padding: 22px 24px; color: var(--muted);
@@ -246,4 +292,7 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 1
   .detail { padding: 22px 18px 60px; }
   .detail h2 { font-size: 24px; }
   .body { padding: 18px; }
+  .qn-row { display: block; }
+  .qn-label { display: block; margin-bottom: 5px; }
+  .chips { max-height: 110px; }
 }

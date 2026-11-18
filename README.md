@@ -36,6 +36,7 @@ Port 8771 is used to stay clear of 8765/8766 (other botany projects) and 8770 (m
 - `All / Family / Genus / Species` filters; `Has text only` toggle; `Random` jumps to a random treatment.
 - `/` or `⌘/Ctrl+K` focuses search, `↑` / `↓` walks the result list, `Enter` opens the highlighted result, `Esc` clears the search.
 - Clicking a family or genus in the breadcrumb jumps to that treatment.
+- **Quick switch** in the detail pane: from a family you get clickable genera and species; from a genus its species; from a species its parent genus/family, other species in the genus, and infraspecific taxa (subsp./var./f.). Chips clear conflicting rank/text filters automatically, and the panel can be collapsed.
 - Each selection updates the URL hash (`#species-5187`), so a treatment can be bookmarked or shared.
 - `Copy plain text` copies the displayed treatment without the HTML markup.
 - Theme toggle (light/dark) is remembered locally.
